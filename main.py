@@ -18,8 +18,9 @@ import asyncio
 import json
 import os
 from flask import Flask
-from threading import Thread
 import websockets
+from werkzeug.serving import make_server
+from threading import Thread
 
 app = Flask('')
 
@@ -28,7 +29,9 @@ def home():
     return "AFK System is Live 24/7"
 
 def run_flask():
-    app.run(host='0.0.0.0', port=8080)
+    port = int(os.getenv("PORT", 8080))
+    server = make_server('0.0.0.0', port, app)
+    server.serve_forever()
 
 def keep_alive():
     t = Thread(target=run_flask)
@@ -80,7 +83,7 @@ class DiscordVoiceAFK:
     async def start(self):
         print(f"[*] [{self.account_id}] Connecting to Discord Gateway...")
         
-        async for ws in websockets.connect(self.ws_url, max_size=None):
+        async for ws in websockets.connect(self.ws_url, max_size=None, ping_interval=None):
             try:
                 hello_msg = await ws.recv()
                 hello_data = json.loads(hello_msg)
@@ -114,8 +117,7 @@ class DiscordVoiceAFK:
                 await self.join_voice(ws)
                 print(f"[+] [{self.account_id}] Successfully connected to Voice Channel: {self.channel_id}")
 
-                async_messages = ws
-                async for message in async_messages:
+                async for message in ws:
                     data = json.loads(message)
                     
                     if data.get('s'):
@@ -169,6 +171,7 @@ if __name__ == "__main__":
         sys.exit(1)
         
     print(f"[*] Total tokens found and loaded: {len(TOKENS)}")
+    
     keep_alive()
     
     asyncio.run(main())
