@@ -30,7 +30,9 @@ def home():
 
 def run_flask():
     port = int(os.getenv("PORT", 8080))
+    # استخدام سرفر أهدأ وأكثر توافقاً مع الخيوط (Threads)
     server = make_server('0.0.0.0', port, app)
+    print(f"[*] Flask server starting on port {port}...", flush=True)
     server.serve_forever()
 
 def keep_alive():
@@ -38,6 +40,7 @@ def keep_alive():
     t.daemon = True
     t.start()
 
+# قراءة المتغيرات وضمان إزالة المسافات الزائدة
 RAW_TOKENS = os.getenv("ACCOUNT_TOKEN", "")
 TOKENS = [t.strip() for t in RAW_TOKENS.split(",") if t.strip()]
 
@@ -81,7 +84,8 @@ class DiscordVoiceAFK:
         await ws.send(json.dumps(voice_state_payload))
 
     async def start(self):
-        print(f"[*] [{self.account_id}] Connecting to Discord Gateway...")
+        # تفعيل flush=True لضمان ظهور النص في لـ Render فوراً
+        print(f"[*] [{self.account_id}] Trying to connect to Discord Gateway...", flush=True)
         
         async for ws in websockets.connect(self.ws_url, max_size=None, ping_interval=None):
             try:
@@ -115,11 +119,10 @@ class DiscordVoiceAFK:
                 
                 await asyncio.sleep(1.5)
                 await self.join_voice(ws)
-                print(f"[+] [{self.account_id}] Successfully connected to Voice Channel: {self.channel_id}")
+                print(f"[+] [{self.account_id}] Connected! Joined channel: {self.channel_id}", flush=True)
 
                 async for message in ws:
                     data = json.loads(message)
-                    
                     if data.get('s'):
                         self.sequence = data['s']
                         
@@ -129,24 +132,25 @@ class DiscordVoiceAFK:
 
                     if t == "READY":
                         self.user_id = d.get('user', {}).get('id')
+                        print(f"[+] [{self.account_id}] Account Ready. User ID: {self.user_id}", flush=True)
 
                     elif t == "VOICE_STATE_UPDATE":
                         if self.user_id and d.get('user_id') == self.user_id:
                             current_channel = d.get('channel_id')
                             if current_channel != self.channel_id:
-                                print(f"[!] [{self.account_id}] Detected kick or leave! Rejoining instantly...")
+                                print(f"[!] [{self.account_id}] Kicked/Left. Rejoining...", flush=True)
                                 await self.join_voice(ws)
 
                     if op == 7:
-                        print(f"[!] [{self.account_id}] Discord requested reconnect. Reconnecting...")
+                        print(f"[!] [{self.account_id}] Reconnect requested by Discord.", flush=True)
                         break
 
-            except websockets.ConnectionClosed:
-                print(f"[!] [{self.account_id}] Connection closed. Reconnecting in 5 seconds...")
+            except websockets.ConnectionClosed as cc:
+                print(f"[!] [{self.account_id}] Connection Closed ({cc.code}). Reconnecting in 5s...", flush=True)
                 await asyncio.sleep(5)
                 continue
             except Exception as e:
-                print(f"[X] [{self.account_id}] Error: {e}")
+                print(f"[X] [{self.account_id}] Error occurred: {e}", flush=True)
                 await asyncio.sleep(5)
                 continue
 
@@ -159,19 +163,21 @@ async def main():
     if tasks:
         await asyncio.gather(*tasks)
     else:
-        print("[X] Critical Error: No valid tokens found to process!")
+        print("[X] Critical Error: No valid tokens found to process!", flush=True)
 
 if __name__ == "__main__":
+    print("[*] Script initiated...", flush=True)
     if not TOKENS:
-        print("[X] Critical Error: Missing ACCOUNT_TOKEN in Environment Variables!")
+        print("[X] Critical Error: Missing ACCOUNT_TOKEN!", flush=True)
         sys.exit(1)
         
     if not GUILD_ID or not CHANNEL_ID:
-        print("[X] Critical Error: Missing GUILD_ID or CHANNEL_ID in Environment Variables!")
+        print("[X] Critical Error: Missing GUILD_ID or CHANNEL_ID!", flush=True)
         sys.exit(1)
         
-    print(f"[*] Total tokens found and loaded: {len(TOKENS)}")
+    print(f"[*] Loaded tokens count: {len(TOKENS)}", flush=True)
     
     keep_alive()
     
+    # تشغيل الاسينك وبدء العمل
     asyncio.run(main())
