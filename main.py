@@ -154,14 +154,11 @@ async def main():
     for index, token in enumerate(TOKENS, start=1):
         bot = DiscordVoiceAFK(token, GUILD_ID, CHANNEL_ID, index)
         
-        # تعديل جوهري: تشغيل الحسابات بالتدريج لكسر حماية ديسكورد
         print(f"[*] Deploying {bot.account_id}... Please wait.", flush=True)
         asyncio.create_task(bot.start())
         
-        # تأخير لمدة 6 ثوانٍ بين كل حساب وحساب لمنع حظر الـ IP
-        await asyncio.sleep(6)
+        await asyncio.sleep(1)
     
-    # إبقاء الـ Loop الأساسي يعمل دون توقف لخدمة الحسابات
     while True:
         await asyncio.sleep(3600)
 
